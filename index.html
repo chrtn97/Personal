@@ -24,41 +24,40 @@
         <small style="opacity: 0.9;">ANPASA SUC. GDL</small>
     </div>
     <div id="lista">
-        <p style="text-align:center; padding:40px; color: #64748b;">Conectando con el servidor de datos...</p>
+        <p style="text-align:center; padding:40px; color: #64748b;">Actualizando lista de personal...</p>
     </div>
     <div class="actualizacion">
-        Sincronizado con Google Sheets<br>
+        Sincronizado con ANPASA Cloud<br>
         <b>ANPASA SUC. GDL</b>
     </div>
 </div>
 
 <script>
-    const URL_SHEET = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQoZCB5zvcnuBhyvZxUIGUZpLwte8T6e_bBLt-1aL3irAvMFSgxSx1DpVS1aPaH9smsrfxyWnWTyYTv/pubhtml';
+    // Enlace optimizado para lectura directa (CSV)
+    const URL_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQoZCB5zvcnuBhyvZxUIGUZpLwte8T6e_bBLt-1aL3irAvMFSgxSx1DpVS1aPaH9smsrfxyWnWTyYTv/pub?output=csv';
 
     async function leerDatos() {
         try {
-            const response = await fetch(URL_SHEET + '?t=' + new Date().getTime());
-            const text = await response.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(text, 'text/html');
+            const response = await fetch(URL_CSV + '&cache=' + new Date().getTime());
+            const data = await response.text();
             
-            const filas = Array.from(doc.querySelectorAll('tr'));
+            // Dividimos el texto por filas
+            const filas = data.split(/\r?\n/);
             let html = "";
             
-            filas.forEach((fila) => {
-                const celdas = Array.from(fila.querySelectorAll('td')).map(c => c.innerText.trim());
+            // Saltamos la primera fila (encabezados)
+            for (let i = 1; i < filas.length; i++) {
+                const columnas = filas[i].split(',');
                 
-                // Buscamos la celda que tenga el número (horas)
-                // Esto hace que el código sea "inteligente" y encuentre los datos sin importar la columna
-                const indiceHoras = celdas.findIndex(texto => !isNaN(parseFloat(texto)) && texto !== "" && !texto.includes('/'));
-                
-                if (indiceHoras !== -1) {
-                    const nombre = celdas[indiceHoras - 1]; // El nombre suele estar antes de las horas
-                    const horas = parseFloat(celdas[indiceHoras]);
-                    const fecha = celdas[indiceHoras + 1] || ""; // La fecha suele estar después
+                if (columnas.length >= 2) {
+                    const nombre = columnas[0].trim();
+                    const horasRaw = columnas[1].trim();
+                    const fecha = columnas[2] ? columnas[2].trim() : '';
 
-                    if (nombre && nombre !== "Nombre") {
+                    if (nombre !== "" && !isNaN(parseFloat(horasRaw))) {
+                        const horas = parseFloat(horasRaw);
                         const esDeuda = horas < 0;
+
                         html += `
                             <div class="item">
                                 <div>
@@ -74,15 +73,16 @@
                             </div>`;
                     }
                 }
-            });
+            }
             
-            document.getElementById('lista').innerHTML = html || "<p style='padding:40px; text-align:center;'>Buscando datos en el archivo...</p>";
+            document.getElementById('lista').innerHTML = html || "<p style='padding:40px; text-align:center;'>No hay trabajadores con horas registradas.</p>";
         } catch (e) {
-            document.getElementById('lista').innerHTML = "<p style='padding:40px; text-align:center; color:red;'>Error de conexión.</p>";
+            document.getElementById('lista').innerHTML = "<p style='padding:40px; text-align:center; color:red;'>Error al conectar con el servidor de datos.</p>";
         }
     }
 
     leerDatos();
+    // Actualizar cada 60 segundos
     setInterval(leerDatos, 60000);
 </script>
 
