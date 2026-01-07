@@ -13,7 +13,7 @@
         .badge { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 800; text-transform: uppercase; }
         .debe { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
         .le-deben { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
-        .actualizacion { font-size: 11px; color: #94a3b8; text-align: center; padding: 20px; background: #f8fafc; line-height: 1.5; }
+        .actualizacion { font-size: 11px; color: #94a3b8; text-align: center; padding: 20px; background: #f8fafc; border-top: 1px solid #eee; }
     </style>
 </head>
 <body>
@@ -24,10 +24,10 @@
         <small style="opacity: 0.9;">ANPASA SUC. GDL</small>
     </div>
     <div id="lista">
-        <p style="text-align:center; padding:40px; color: #64748b;">Sincronizando con Google Sheets...</p>
+        <p style="text-align:center; padding:40px; color: #64748b;">Sincronizando con ANPASA Cloud...</p>
     </div>
     <div class="actualizacion">
-        Los cambios en el Excel pueden tardar unos minutos en reflejarse.<br>
+        Sincronizado con Google Sheets<br>
         <b>ANPASA SUC. GDL</b>
     </div>
 </div>
@@ -37,55 +37,49 @@
 
     async function leerDatos() {
         try {
-            // Añadimos un número aleatorio al final para forzar a Google a darnos datos nuevos
-            const response = await fetch(URL_SHEET + '?cache=' + Math.random());
+            const response = await fetch(URL_SHEET + '?t=' + new Date().getTime());
             const text = await response.text();
             const parser = new DOMParser();
             const doc = parser.parseFromString(text, 'text/html');
             
-            // Buscamos todas las filas de la tabla
-            const filas = Array.from(doc.querySelectorAll('table tr'));
+            // Obtenemos todas las celdas de la tabla
+            const celdas = Array.from(doc.querySelectorAll('td'));
             let html = "";
+            
+            // Agrupamos de 3 en 3 (Nombre, Horas, Fecha)
+            for (let i = 3; i < celdas.length; i += 3) {
+                const nombre = celdas[i] ? celdas[i].innerText.trim() : "";
+                const rawHoras = celdas[i+1] ? celdas[i+1].innerText.trim() : "";
+                const fecha = celdas[i+2] ? celdas[i+2].innerText.trim() : "";
 
-            filas.forEach((filas, index) => {
-                const celdas = filas.querySelectorAll('td');
-                // Saltamos la fila 1 (encabezados) y verificamos que haya datos
-                if (index > 0 && celdas.length >= 2) {
-                    const nombre = celdas[0].innerText.trim();
-                    const rawHoras = celdas[1].innerText.trim();
-                    const fecha = celdas[2] ? celdas[2].innerText.trim() : '';
-
-                    // Si el nombre no está vacío y las horas son un número
-                    if (nombre !== "" && nombre !== "Nombre" && !isNaN(parseFloat(rawHoras))) {
-                        const horas = parseFloat(rawHoras);
-                        const esDeuda = horas < 0;
-                        const clase = esDeuda ? 'debe' : 'le-deben';
-                        const texto = esDeuda ? 'Debe horas' : 'Se le deben';
-
-                        html += `
-                            <div class="item">
-                                <div>
-                                    <div class="nombre">${nombre}</div>
-                                    <small style="color:#94a3b8;">Última mod: ${fecha}</small>
-                                </div>
-                                <div style="text-align:right">
-                                    <div style="font-weight:bold; font-size: 20px; color:#1e293b;">${Math.abs(horas)}</div>
-                                    <span class="badge ${clase}">${texto}</span>
-                                </div>
-                            </div>`;
-                    }
+                if (nombre !== "" && !isNaN(parseFloat(rawHoras))) {
+                    const horas = parseFloat(rawHoras);
+                    const esDeuda = horas < 0;
+                    
+                    html += `
+                        <div class="item">
+                            <div>
+                                <div class="nombre">${nombre}</div>
+                                <small style="color:#94a3b8;">Corte: ${fecha}</small>
+                            </div>
+                            <div style="text-align:right">
+                                <div style="font-weight:bold; font-size: 20px; color:#1e293b;">${Math.abs(horas)} hrs</div>
+                                <span class="badge ${esDeuda ? 'debe' : 'le-deben'}">
+                                    ${esDeuda ? 'Debe' : 'Se le deben'}
+                                </span>
+                            </div>
+                        </div>`;
                 }
-            });
-
-            document.getElementById('lista').innerHTML = html || "<p style='padding:40px; text-align:center;'>No se encontraron trabajadores registrados.</p>";
+            }
+            
+            document.getElementById('lista').innerHTML = html || "<p style='padding:40px; text-align:center;'>No hay trabajadores en la lista.</p>";
         } catch (e) {
-            document.getElementById('lista').innerHTML = "<p style='padding:40px; text-align:center; color:red;'>Error de conexión con ANPASA Cloud.</p>";
+            document.getElementById('lista').innerHTML = "<p style='padding:40px; text-align:center; color:red;'>Error de conexión.</p>";
         }
     }
 
     leerDatos();
-    // Actualiza cada 1 minuto ahora que estamos probando
-    setInterval(leerDatos, 60000);
+    setInterval(leerDatos, 60000); // Refresca cada minuto
 </script>
 
 </body>
