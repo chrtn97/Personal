@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estatus de Horas - Personal</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 15px; display: flex; justify-content: center; }
+        .contenedor { width: 100%; max-width: 500px; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header { background: #1a73e8; color: white; padding: 20px; text-align: center; }
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #eee; }
+        .nombre { font-weight: 600; color: #333; text-transform: capitalize; }
+        .badge { padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; }
+        .debe { background: #fce8e6; color: #d93025; }
+        .le-deben { background: #e6f4ea; color: #188038; }
+        .actualizacion { font-size: 11px; color: #777; text-align: center; padding: 15px; background: #fafafa; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+<div class="contenedor">
+    <div class="header">
+        <h2 style="margin:0; font-size: 22px;">Control de Horas</h2>
+        <small>Vista de solo lectura para personal</small>
+    </div>
+    <div id="lista">
+        <p style="text-align:center; padding:30px; color: #666;">Cargando información...</p>
+    </div>
+    <div class="actualizacion">
+        Actualizado automáticamente cada 5 min.<br>
+        <b>ANPASA SUC. GDL</b>
+    </div>
+</div>
+
+<script>
+    // Tu enlace de Google Sheets ya configurado
+    const URL_SHEET = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQoZCB5zvcnuBhyvZxUIGUZpLwte8T6e_bBLt-1aL3irAvMFSgxSx1DpVS1aPaH9smsrfxyWnWTyYTv/pubhtml';
+
+    async function leerDatos() {
+        try {
+            const response = await fetch(URL_SHEET);
+            const text = await response.text();
+            
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(text, 'text/html');
+            const filas = doc.querySelectorAll('table tr');
+            
+            let html = "";
+            // Empezamos en la fila 2 (índice 1 en programación) para saltar los encabezados
+            for (let i = 1; i < filas.length; i++) {
+                const celdas = filas[i].querySelectorAll('td');
+                
+                // Verificamos que la fila tenga nombre y horas
+                if (celdas.length >= 2 && celdas[0].innerText.trim() !== "") {
+                    const nombre = celdas[0].innerText.trim();
+                    const valorHoras = celdas[1].innerText.trim();
+                    const horas = parseFloat(valorHoras);
+                    const fecha = celdas[2] ? celdas[2].innerText.trim() : '---';
+                    
+                    if (!isNaN(horas)) {
+                        const clase = horas >= 0 ? 'le-deben' : 'debe';
+                        const texto = horas >= 0 ? 'Se le deben' : 'Debe';
+
+                        html += `
+                            <div class="item">
+                                <div>
+                                    <div class="nombre">${nombre}</div>
+                                    <small style="color:gray;">Corte: ${fecha}</small>
+                                </div>
+                                <div style="text-align:right">
+                                    <div style="font-weight:bold; font-size: 18px;">${Math.abs(horas)} hrs</div>
+                                    <span class="badge ${clase}">${texto}</span>
+                                </div>
+                            </div>`;
+                    }
+                }
+            }
+            document.getElementById('lista').innerHTML = html || "<p style='padding:20px; text-align:center;'>No hay datos registrados en el Excel.</p>";
+        } catch (error) {
+            document.getElementById('lista').innerHTML = "<p style='padding:20px; text-align:center; color: red;'>Error al conectar con el servidor.</p>";
+        }
+    }
+
+    leerDatos();
+    // Refrescar cada 5 minutos
+    setInterval(leerDatos, 300000);
+</script>
+
+</body>
+</html>
