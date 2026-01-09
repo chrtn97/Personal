@@ -8,6 +8,20 @@
         body { font-family: 'Segoe UI', sans-serif; background: #e9ecef; padding: 15px; display: flex; justify-content: center; }
         .contenedor { width: 100%; max-width: 500px; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.1); }
         .header { background: #0d47a1; color: white; padding: 25px; text-align: center; }
+        
+        /* Sección Cuadro de Honor Directo en Código */
+        .seccion-honor { display: flex; gap: 10px; padding: 15px; background: #f1f5f9; border-bottom: 2px solid #e2e8f0; }
+        .card { flex: 1; padding: 15px 10px; border-radius: 12px; text-align: center; color: white; }
+        .card small { display: block; font-size: 10px; text-transform: uppercase; font-weight: 800; margin-bottom: 5px; opacity: 0.9; }
+        .card span { font-size: 13px; font-weight: bold; display: block; text-transform: uppercase; line-height: 1.2; }
+        
+        /* Estilo Dorado para el Mejor */
+        .ganador { background: linear-gradient(135deg, #b8860b 0%, #ffdf00 100%); color: #422006; box-shadow: 0 4px 12px rgba(184,134,11,0.4); border: 1px solid #996515; }
+        /* Estilo Rojo para el Peor */
+        .atencion { background: #991b1b; box-shadow: 0 4px 12px rgba(153,27,27,0.4); }
+        
+        .icono { font-size: 24px; margin-bottom: 4px; }
+
         .item { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; border-bottom: 1px solid #f0f0f0; }
         .nombre { font-weight: bold; color: #2c3e50; font-size: 16px; text-transform: uppercase; }
         .badge { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 800; text-transform: uppercase; border: 1px solid transparent; }
@@ -23,9 +37,24 @@
         <h2 style="margin:0; letter-spacing: 1px;">CONTROL DE HORAS</h2>
         <small style="opacity: 0.9;">ANPASA SUC. GDL</small>
     </div>
-    <div id="lista">
-        <p style="text-align:center; padding:40px; color: #64748b;">Actualizando lista de personal...</p>
+
+    <div class="seccion-honor">
+        <div class="card ganador">
+            <div class="icono">🏆</div>
+            <small>El Mejor de la Semana</small>
+            <span id="txt-mejor">JORGE ROMERO CALDERA</span>
+        </div>
+        <div class="card atencion">
+            <div class="icono">😡</div>
+            <small>El Peor de la Semana</small>
+            <span id="txt-peor">CECILIO LIZALDI</span>
+        </div>
     </div>
+
+    <div id="lista">
+        <p style="text-align:center; padding:40px; color: #64748b;">Sincronizando personal...</p>
+    </div>
+
     <div class="actualizacion">
         Sincronizado con ANPASA Cloud<br>
         <b>ANPASA SUC. GDL</b>
@@ -33,22 +62,18 @@
 </div>
 
 <script>
-    // Enlace optimizado para lectura directa (CSV)
+    // URL de tu Google Sheets (Mantenemos la misma que ya funciona)
     const URL_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQoZCB5zvcnuBhyvZxUIGUZpLwte8T6e_bBLt-1aL3irAvMFSgxSx1DpVS1aPaH9smsrfxyWnWTyYTv/pub?output=csv';
 
     async function leerDatos() {
         try {
             const response = await fetch(URL_CSV + '&cache=' + new Date().getTime());
             const data = await response.text();
-            
-            // Dividimos el texto por filas
             const filas = data.split(/\r?\n/);
             let html = "";
             
-            // Saltamos la primera fila (encabezados)
             for (let i = 1; i < filas.length; i++) {
                 const columnas = filas[i].split(',');
-                
                 if (columnas.length >= 2) {
                     const nombre = columnas[0].trim();
                     const horasRaw = columnas[1].trim();
@@ -57,7 +82,6 @@
                     if (nombre !== "" && !isNaN(parseFloat(horasRaw))) {
                         const horas = parseFloat(horasRaw);
                         const esDeuda = horas < 0;
-
                         html += `
                             <div class="item">
                                 <div>
@@ -66,23 +90,19 @@
                                 </div>
                                 <div style="text-align:right">
                                     <div style="font-weight:bold; font-size: 20px; color:#1e293b;">${Math.abs(horas)} hrs</div>
-                                    <span class="badge ${esDeuda ? 'debe' : 'le-deben'}">
-                                        ${esDeuda ? 'Debe' : 'Se le deben'}
-                                    </span>
+                                    <span class="badge ${esDeuda ? 'debe' : 'le-deben'}">${esDeuda ? 'Debe' : 'Se le deben'}</span>
                                 </div>
                             </div>`;
                     }
                 }
             }
-            
-            document.getElementById('lista').innerHTML = html || "<p style='padding:40px; text-align:center;'>No hay trabajadores con horas registradas.</p>";
+            document.getElementById('lista').innerHTML = html || "<p style='padding:40px; text-align:center;'>Sin datos.</p>";
         } catch (e) {
-            document.getElementById('lista').innerHTML = "<p style='padding:40px; text-align:center; color:red;'>Error al conectar con el servidor de datos.</p>";
+            document.getElementById('lista').innerHTML = "<p style='padding:40px; text-align:center; color:red;'>Error de red.</p>";
         }
     }
 
     leerDatos();
-    // Actualizar cada 60 segundos
     setInterval(leerDatos, 60000);
 </script>
 
